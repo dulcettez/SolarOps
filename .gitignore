@@ -1,0 +1,15 @@
+# Model files (too large for GitHub)
+*.pt
+*.pth
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Database credentials
+ca.pem
+db.py
+
+# Uploads folder
+uploads/
