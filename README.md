@@ -1,5 +1,5 @@
 # SolarOps - Solar Panel Defect Detection System
-An advanced, economics-aware AI platform designed to detect solar panel defects using YOLO9, supporting both normal and thermal images.
+An advanced, economics-aware AI platform designed to detect solar panel defects using YOLOv9, supporting both normal and thermal images.
 
 ---
 
