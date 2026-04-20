@@ -95,18 +95,30 @@ After training the YOLOv9c-seg model on the custom Solar Panel Defect Detection 
 ```
 solar-panel-defect-detection/
 │
+├── backend/
+│   ├── models/                         # Saved YOLO9 file for normal images
+│   ├── app.py                          # Main backend server
+│   ├── thermal_inference.py  
+│   └── normal_inference.py              # Model loading and prediction logic
+│
+├── database/
+│   ├── database.py
+│   ├── scheme.sql
+│
+├── frontend/
+│   ├── guidelines/
+│   ├── src/
+│   ├── attributions.md
+│   ├── default_shadcn_theme.css
+│   ├── index.html
+│   ├── package.json
+│   ├── pnpm-workspace.yaml
+│   ├── postcss.config.mjs
+│   └── vite.config.ts
+│
 ├── notebooks/
 │   ├── normal_image_training.ipynb     # YOLOv9 training on normal images
 │   └── thermal_image_training.ipynb    # YOLOv9 training on thermal images
-│
-├── backend/
-│   ├── app.py                          # Main backend server
-│   └── model_inference.py              # Model loading and prediction logic
-│
-├── frontend/
-│   ├── index.html
-│   ├── style.css
-│   └── script.js
 │
 ├── .gitignore
 └── README.md
