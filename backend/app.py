@@ -3,10 +3,12 @@ from flask_cors import CORS
 from normal_inference import predict_normal_image
 from thermal_inference import analyze_thermal_image
 from db import save_prediction
+from database.database import verify_user
 import os
+import uuid
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["http://localhost:5173"])
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -18,7 +20,7 @@ def predict_normal():
         return jsonify({'error': 'No image uploaded'}), 400
 
     file = request.files['image']
-    filename = file.filename
+    filename = str(uuid.uuid4()) + "_" + file.filename
     file_path = os.path.join(UPLOAD_FOLDER, filename)
     file.save(file_path)
 
@@ -67,6 +69,16 @@ def predict_thermal():
 @app.route('/', methods=['GET'])
 def health_check():
     return jsonify({'status': 'SolarOps backend is running ✅'})
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+
+    if verify_user(data['email'], data['password']):
+        return jsonify({"message": "Login success"})
+    else:
+        return jsonify({"error": "Invalid credentials"}), 401
 
 
 if __name__ == '__main__':

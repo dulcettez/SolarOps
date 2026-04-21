@@ -1,3 +1,4 @@
+import { login } from "../api/solar";
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { Sun, Mail, Lock, Eye, EyeOff, Sparkles, AlertCircle } from 'lucide-react';
@@ -23,8 +24,34 @@ export function LoginPage() {
     }
 
     // Check credentials against database
-    const users = JSON.parse(localStorage.getItem('solarops_users') || '[]');
-    const user = users.find((u: any) => u.email === email && u.password === password);
+    const handleLogin = async (e) => {
+      e.preventDefault();
+      setError('');
+    
+      if (!email || !password) {
+        setError('Please enter both email and password');
+        return;
+      }
+    
+      try {
+        await login(email, password);
+    
+        // store user for future API calls
+        localStorage.setItem(
+          'solarops_current_user',
+          JSON.stringify({ email, password })
+        );
+    
+        navigate('/console');
+    
+      } catch (err) {
+        if (err.response?.status === 401) {
+          setError('Invalid email or password');
+        } else {
+          setError('Server error. Please try again.');
+        }
+      }
+    };
 
     if (user) {
       // Successful login
