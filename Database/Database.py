@@ -1,106 +1,102 @@
 import sqlite3
 
+DB_NAME = "solar.db"
+
 def init_db():
-    """Run once to create tables"""
-    conn = sqlite3.connect('solar.db')
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS users (
-            email TEXT PRIMARY KEY,
-            password TEXT NOT NULL
-        );
-        
-        CREATE TABLE IF NOT EXISTS panels (
-            email TEXT NOT NULL,
-            panel_id TEXT NOT NULL,
-            normal_image BLOB NOT NULL,
-            thermal_image BLOB NOT NULL,
-            severity TEXT,
-            recommended_action TEXT,
-            next_maintenance TEXT,
-            PRIMARY KEY (email, panel_id),
-            FOREIGN KEY (email) REFERENCES users(email)
-        );
-    """)
-    conn.close()
-
-def register_user(email, password):
-    """Add new user"""
-    conn = sqlite3.connect('solar.db')
-    try:
-        conn.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, password))
-        conn.commit()
-    except sqlite3.IntegrityError:
-        print("Email already exists")
-    finally:
-        conn.close()
-
-def save_panel(email, password, panel_id, normal_path, thermal_path, severity, action, maintenance):
-    """Upload or overwrite panel (only for this user)"""
-    conn = sqlite3.connect('solar.db')
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    
-    # Verify login
-    cursor.execute("SELECT 1 FROM users WHERE email=? AND password=?", (email, password))
-    if not cursor.fetchone():
-        raise Exception("Invalid email or password")
-    
-    # Read image files as binary
-    with open(normal_path, 'rb') as f:
-        normal_blob = f.read()
-    with open(thermal_path, 'rb') as f:
-        thermal_blob = f.read()
-    
-    # Insert or overwrite (ON CONFLICT = same email+panel_id)
-    cursor.execute("""
-        INSERT INTO panels (email, panel_id, normal_image, thermal_image, severity, recommended_action, next_maintenance)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(email, panel_id) 
-        DO UPDATE SET
-            normal_image=excluded.normal_image,
-            thermal_image=excluded.thermal_image,
-            severity=excluded.severity,
-            recommended_action=excluded.recommended_action,
-            next_maintenance=excluded.next_maintenance
-    """, (email, panel_id, normal_blob, thermal_blob, severity, action, maintenance))
-    
+
+    cursor.executescript("""
+    CREATE TABLE IF NOT EXISTS users (
+        email TEXT PRIMARY KEY
+    );
+
+    CREATE TABLE IF NOT EXISTS panels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL,
+        filename TEXT NOT NULL,
+        file_path TEXT,
+        defect_class TEXT,
+        confidence REAL,
+        image_type TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(email) REFERENCES users(email)
+    );
+    """)
+
     conn.commit()
     conn.close()
 
-def get_panels(email, password):
-    """Get all panels for logged-in user"""
-    conn = sqlite3.connect('solar.db')
+def create_user(email):
+    """Register a user if not exists"""
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    
-    # Verify login
-    cursor.execute("SELECT email FROM users WHERE email=? AND password=?", (email, password))
-    if not cursor.fetchone():
-        return None
-    
-    cursor.execute("""
-        SELECT panel_id, normal_image, severity, next_maintenance, recommended_action 
-        FROM panels 
-        WHERE email=?
-    """, (email,))
-    
-    panels = cursor.fetchall()
-    conn.close()
-    return panels
 
-def get_panel_by_id(email, password, panel_id):
-    """Get specific panel for user"""
-    conn = sqlite3.connect('solar.db')
+    try:
+        cursor.execute("INSERT INTO users (email) VALUES (?)", (email,))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        # user already exists (ignore)
+        pass
+    finally:
+        conn.close()
+
+
+def verify_user(email):
+    """Simple auth: user exists in DB"""
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    
-    cursor.execute("SELECT 1 FROM users WHERE email=? AND password=?", (email, password))
-    if not cursor.fetchone():
-        return None
-    
-    cursor.execute("""
-        SELECT panel_id, normal_image, severity, next_maintenance, recommended_action 
-        FROM panels 
-        WHERE email=? AND panel_id=?
-    """, (email, panel_id))
-    
-    panel = cursor.fetchone()
+
+    cursor.execute("SELECT email FROM users WHERE email=?", (email,))
+    user = cursor.fetchone()
+
     conn.close()
-    return panel
+    return user is not None
+
+
+def save_prediction(email, filename, file_path, defect_class, confidence, image_type):
+    """Store ML prediction result"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    # ensure user exists
+    create_user(email)
+
+    cursor.execute("""
+        INSERT INTO panels (
+            email,
+            filename,
+            file_path,
+            defect_class,
+            confidence,
+            image_type
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        email,
+        filename,
+        file_path,
+        defect_class,
+        confidence,
+        image_type
+    ))
+
+    conn.commit()
+    conn.close()
+
+def get_user_predictions(email):
+    """Fetch all predictions for a user"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT filename, defect_class, confidence, image_type, created_at
+        FROM panels
+        WHERE email=?
+        ORDER BY created_at DESC
+    """, (email,))
+
+    data = cursor.fetchall()
+    conn.close()
+
+    return data

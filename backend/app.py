@@ -54,6 +54,7 @@ def predict_thermal():
     if result is None:
         return jsonify({'error': 'Could not analyze thermal image'}), 400
 
+
     save_prediction(
         filename=filename,
         file_path=file_path,
@@ -75,7 +76,7 @@ def health_check():
 def login():
     data = request.json
 
-    if verify_user(data['email'], data['password']):
+    if verify_user(data['email']):
         return jsonify({"message": "Login success"})
     else:
         return jsonify({"error": "Invalid credentials"}), 401
